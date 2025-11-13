@@ -3,8 +3,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local runService = game:GetService("RunService")
-local isTeleporting = false
-local teleportConnection = nil
+local teleporting = false -- чтобы стартовать/остановить цикл
 
 -- Создаем ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -18,66 +17,59 @@ button.Position = UDim2.new(0.5, -100, 0.9, -25)
 button.Text = "Начать телепорт к сундукам"
 button.Parent = screenGui
 
-local function startTeleportCycle()
-    isTeleporting = true
-    -- Цикл телепортации
-    teleportConnection = runService.Heartbeat:Connect(function()
-        if not isTeleporting then
-            teleportConnection:Disconnect()
-            return
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 200, 0, 50)
+stopButton.Position = UDim2.new(0.5, -100, 0.8, -25)
+stopButton.Text = "Остановить"
+stopButton.Parent = screenGui
+stopButton.Visible = false
+
+local function getAllChests()
+    local chests = {}
+    for _, model in pairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name == "chests" then
+            table.insert(chests, model)
         end
-
-        -- Находим все сундуки
-        local chestsModels = {}
-        for _, model in pairs(workspace:GetDescendants()) do
-            if model:IsA("Model") and model.Name == "chests" then
-                table.insert(chestsModels, model)
-            end
-        end
-
-        if #chestsModels == 0 then
-            return
-        end
-
-        -- Выбираем случайный сундук
-        local randomChest = chestsModels[math.random(1, #chestsModels)]
-        local targetPosition = nil
-
-        -- Находим центральную точку модели или первую часть
-        if #randomChest:GetChildren() > 0 then
-            local firstPart = randomChest:GetChildren()[1]
-            if firstPart:IsA("BasePart") then
-                targetPosition = firstPart.Position
-            end
-        end
-
-        if targetPosition then
-            -- Телепортируем игрока
-            local newY = targetPosition.Y
-            if newY < 115 then newY = 115 end
-            if newY > 180 then newY = 180 end
-
-            humanoidRootPart.CFrame = CFrame.new(targetPosition.X, newY, targetPosition.Z)
-        end
-    end)
+    end
+    return chests
 end
 
-local function stopTeleportCycle()
-    isTeleporting = false
-    if teleportConnection then
-        teleportConnection:Disconnect()
-        teleportConnection = nil
+local function teleportToRandomChest()
+    local chests = getAllChests()
+    if #chests == 0 then return end
+    local randomChest = chests[math.random(1, #chests)]
+    -- Телепортируемся к случайному сундуку
+    for _, part in pairs(randomChest:GetChildren()) do
+        if part:IsA("BasePart") then
+            local y = part.Position.Y
+            -- Ограничение по высоте
+            if y < 115 then y = 115 end
+            if y > 180 then y = 180 end
+            humanoidRootPart.CFrame = CFrame.new(part.Position.X, y + 3, part.Position.Z)
+            break -- Телепортируемся к первому базовому компоненту
+        end
     end
 end
+
+local teleportCoroutine = nil
 
 button.MouseButton1Click:Connect(function()
-    if isTeleporting then
-        -- Остановить цикл
-        stopTeleportCycle()
-        button.Text = "Начать телепорт к сундукам"
-    else
-        -- Начать цикл
-        startTeleportCycle()
-        button.Text = "Остановить телепорт"
-    end
+    if teleporting then return end
+    teleporting = true
+    button.Visible = false
+    stopButton.Visible = true
+
+    teleportCoroutine = coroutine.create(function()
+        while teleporting do
+            teleportToRandomChest()
+            wait(1) -- интервал в 1 секунду
+        end
+    end)
+    coroutine.resume(teleportCoroutine)
+end)
+
+stopButton.MouseButton1Click:Connect(function()
+    teleporting = false
+    button.Visible = true
+    stopButton.Visible = false
 end)
