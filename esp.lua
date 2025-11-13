@@ -55,57 +55,85 @@ local function findAccessibleChest(chests)
     return accessibleChests
 end
 
-local function teleportToRandomAccessibleChest()
-    local chests = getAllChests()
-    local accessibleChests = findAccessibleChest(chests)
-    if #accessibleChests == 0 then return end
-
-    local randomChest = accessibleChests[math.random(1, #accessibleChests)]
-    for _, part in pairs(randomChest:GetChildren()) do
-        if part:IsA("BasePart") then
-            local y = part.Position.Y
-            -- Ограничение по высоте
-            if y < 115 then y = 115 end
-            if y > 180 then y = 180 end
-            humanoidRootPart.CFrame = CFrame.new(part.Position.X, y + 3, part.Position.Z)
-            break
+local function getNearestProximityPrompt(position, radius)
+    local closestPrompt = nil
+    local closestDistance = math.huge
+    for _, prompt in pairs(workspace:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            local distance = (prompt.Parent.HumanoidRootPart.Position - position).magnitude
+            if distance <= radius then
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPrompt = prompt
+                end
+            end
         end
+    end
+    return closestPrompt
+end
+
+local function activatePrompt(prompt)
+    if prompt and prompt.Enabled then
+        prompt:InputHoldBegin()
+        wait(0.5)
+        prompt:InputHoldEnd()
     end
 end
 
-local function autoPressProximityPrompt()
-    local radius = 15
-    for _, descendant in pairs(workspace:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
-            local parentPart = descendant.Parent
-            if parentPart and parentPart:IsA("BasePart") then
-                local distance = (parentPart.Position - humanoidRootPart.Position).magnitude
-                if distance <= radius then
-                    -- Автоматически нажимать на ProximityPrompt
-                    if not descendant.Enabled then
-                        -- Если нужен только один активация, можно пропустить
-                        descendant:InputHoldBegin()
-                        -- Можно добавить задержку, чтобы симулировать удержание
-                        -- Или вызвать InputHoldEnd() через некоторое время
-                        delay(0.5, function()
-                            descendant:InputHoldEnd()
-                        end)
-                    end
-                end
+local function teleportToChest(chest)
+    -- Проверка высоты сундука
+    local canTeleport = false
+    for _, part in pairs(chest:GetChildren()) do
+        if part:IsA("BasePart") then
+            local y = part.Position.Y
+            if y >= 115 and y <= 180 then
+                canTeleport = true
+                -- Телепортируемся к части сундука
+                local targetY = y
+                if targetY < 115 then targetY = 115 end
+                if targetY > 180 then targetY = 180 end
+                humanoidRootPart.CFrame = CFrame.new(part.Position.X, targetY + 3, part.Position.Z)
+                break
             end
         end
     end
 end
 
-local teleportCoroutine = nil
-local promptCoroutine = nil
+local function cycle()
+    while teleporting do
+        -- Поиск ближайшего prompt в радиусе 15
+        local prompt = getNearestProximityPrompt(humanoidRootPart.Position, 15)
+        if prompt then
+            -- Активация prompt
+            activatePrompt(prompt)
+        end
+
+        -- Поиск сундуков и телепортация к допустимому
+        local chests = getAllChests()
+        local accessibleChests = findAccessibleChest(chests)
+        if #accessibleChests > 0 then
+            -- Выбираем случайный сундук из доступных
+            local chest = accessibleChests[math.random(1, #accessibleChests)]
+            teleportToChest(chest)
+        end
+
+        wait(1)
+    end
+end
 
 local function startTeleportCycle()
     if teleporting then return end
     teleporting = true
     startButton.Visible = false
     stopButton.Visible = true
+    coroutine.wrap(cycle)()
+end
 
-    teleportCoroutine = coroutine.create(function()
-        while teleporting do
-           
+local function stopTeleportCycle()
+    teleporting = false
+    startButton.Visible = true
+    stopButton.Visible = false
+end
+
+startButton.MouseButton1Click:Connect(startTeleportCycle)
+stopButton.MouseButton1Click:Connect(stopTeleportCycle)
