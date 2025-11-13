@@ -14,14 +14,14 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 local startButton = Instance.new("TextButton")
 startButton.Size = UDim2.new(0, 200, 0, 50)
 startButton.Position = UDim2.new(0.5, -100, 0.9, -25)
-startButton.Text = "Начать телепорт к сундукам"
+startButton.Text = "Start TP to Chest"
 startButton.Parent = screenGui
 
 -- Создаем кнопку для остановки
 local stopButton = Instance.new("TextButton")
 stopButton.Size = UDim2.new(0, 200, 0, 50)
 stopButton.Position = UDim2.new(0.5, -100, 0.8, -25)
-stopButton.Text = "Остановить"
+stopButton.Text = "Stop TP to Chest"
 stopButton.Parent = screenGui
 stopButton.Visible = false
 
