@@ -10,13 +10,14 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TeleportChestGUI"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Создаем кнопку
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 200, 0, 50)
-button.Position = UDim2.new(0.5, -100, 0.9, -25)
-button.Text = "Начать телепорт к сундукам"
-button.Parent = screenGui
+-- Создаем кнопку для запуска
+local startButton = Instance.new("TextButton")
+startButton.Size = UDim2.new(0, 200, 0, 50)
+startButton.Position = UDim2.new(0.5, -100, 0.9, -25)
+startButton.Text = "Начать телепорт к сундукам"
+startButton.Parent = screenGui
 
+-- Создаем кнопку для остановки
 local stopButton = Instance.new("TextButton")
 stopButton.Size = UDim2.new(0, 200, 0, 50)
 stopButton.Position = UDim2.new(0.5, -100, 0.8, -25)
@@ -34,42 +35,66 @@ local function getAllChests()
     return chests
 end
 
-local function teleportToRandomChest()
+local function findAccessibleChest(chests)
+    local accessibleChests = {}
+    for _, chest in pairs(chests) do
+        local accessible = false
+        for _, part in pairs(chest:GetChildren()) do
+            if part:IsA("BasePart") then
+                local y = part.Position.Y
+                if y >= 115 and y <= 180 then
+                    accessible = true
+                    break
+                end
+            end
+        end
+        if accessible then
+            table.insert(accessibleChests, chest)
+        end
+    end
+    return accessibleChests
+end
+
+local function teleportToRandomAccessibleChest()
     local chests = getAllChests()
-    if #chests == 0 then return end
-    local randomChest = chests[math.random(1, #chests)]
-    -- Телепортируемся к случайному сундуку
+    local accessibleChests = findAccessibleChest(chests)
+    if #accessibleChests == 0 then return end
+
+    local randomChest = accessibleChests[math.random(1, #accessibleChests)]
     for _, part in pairs(randomChest:GetChildren()) do
         if part:IsA("BasePart") then
             local y = part.Position.Y
             -- Ограничение по высоте
-            if y < 115 then y = 115 end
-            if y > 180 then y = 180 end
+            if y < 120 then y = 120 end
+            if y > 160 then y = 160 end
             humanoidRootPart.CFrame = CFrame.new(part.Position.X, y + 3, part.Position.Z)
-            break -- Телепортируемся к первому базовому компоненту
+            break
         end
     end
 end
 
 local teleportCoroutine = nil
 
-button.MouseButton1Click:Connect(function()
+local function startTeleportCycle()
     if teleporting then return end
     teleporting = true
-    button.Visible = false
+    startButton.Visible = false
     stopButton.Visible = true
 
     teleportCoroutine = coroutine.create(function()
         while teleporting do
-            teleportToRandomChest()
-            wait(1) -- интервал в 1 секунду
+            teleportToRandomAccessibleChest()
+            wait(1)
         end
     end)
     coroutine.resume(teleportCoroutine)
-end)
+end
 
-stopButton.MouseButton1Click:Connect(function()
+local function stopTeleportCycle()
     teleporting = false
-    button.Visible = true
+    startButton.Visible = true
     stopButton.Visible = false
-end)
+end
+
+startButton.MouseButton1Click:Connect(startTeleportCycle)
+stopButton.MouseButton1Click:Connect(stopTeleportCycle)
