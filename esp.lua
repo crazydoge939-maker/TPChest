@@ -42,7 +42,7 @@ local function findAccessibleChest(chests)
         for _, part in pairs(chest:GetChildren()) do
             if part:IsA("BasePart") then
                 local y = part.Position.Y
-                if y >= 115 and y <= 180 then
+                if y >= 120 and y <= 180 then
                     accessible = true
                     break
                 end
@@ -66,7 +66,7 @@ local function teleportToRandomAccessibleChest()
             local y = part.Position.Y
             -- Ограничение по высоте
             if y < 120 then y = 120 end
-            if y > 160 then y = 160 end
+            if y > 180 then y = 180 end
             humanoidRootPart.CFrame = CFrame.new(part.Position.X, y + 3, part.Position.Z)
             break
         end
