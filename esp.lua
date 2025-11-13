@@ -73,7 +73,32 @@ local function teleportToRandomAccessibleChest()
     end
 end
 
+local function autoPressProximityPrompt()
+    local radius = 15
+    for _, descendant in pairs(workspace:GetDescendants()) do
+        if descendant:IsA("ProximityPrompt") then
+            local parentPart = descendant.Parent
+            if parentPart and parentPart:IsA("BasePart") then
+                local distance = (parentPart.Position - humanoidRootPart.Position).magnitude
+                if distance <= radius then
+                    -- Автоматически нажимать на ProximityPrompt
+                    if not descendant.Enabled then
+                        -- Если нужен только один активация, можно пропустить
+                        descendant:InputHoldBegin()
+                        -- Можно добавить задержку, чтобы симулировать удержание
+                        -- Или вызвать InputHoldEnd() через некоторое время
+                        delay(0.5, function()
+                            descendant:InputHoldEnd()
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end
+
 local teleportCoroutine = nil
+local promptCoroutine = nil
 
 local function startTeleportCycle()
     if teleporting then return end
@@ -83,65 +108,4 @@ local function startTeleportCycle()
 
     teleportCoroutine = coroutine.create(function()
         while teleporting do
-            teleportToRandomAccessibleChest()
-            wait(1)
-        end
-    end)
-    coroutine.resume(teleportCoroutine)
-end
-
-local function stopTeleportCycle()
-    teleporting = false
-    startButton.Visible = true
-    stopButton.Visible = false
-end
-
-startButton.MouseButton1Click:Connect(startTeleportCycle)
-stopButton.MouseButton1Click:Connect(stopTeleportCycle)
-
--- =======================
--- Автоматическая активация ProximityPrompt
--- =======================
-
-local promptRadius = 15 -- радиус поиска сундука
-
-while true do
-    local chests = {}
-    for _, model in pairs(workspace:GetDescendants()) do
-        if model:IsA("Model") and model.Name == "chests" then
-            for _, part in pairs(model:GetChildren()) do
-                if part:IsA("BasePart") then
-                    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
-                    if prompt then
-                        table.insert(chests, {part = part, prompt = prompt})
-                    end
-                end
-            end
-        end
-    end
-
-    local closestChest = nil
-    local minDistance = math.huge
-
-    for _, chest in pairs(chests) do
-        local distance = (chest.part.Position - humanoidRootPart.Position).Magnitude
-        if distance <= promptRadius and distance < minDistance then
-            minDistance = distance
-            closestChest = chest
-        end
-    end
-
-    if closestChest and closestChest.prompt then
-        -- Активируем ProximityPrompt
-        -- В Roblox для автоматической активации можно вызвать: 
-        -- closestChest.prompt:InputBegan() или установить свойство Triggered
-        -- Но самый надежный способ - вызвать :InputBegan с нужными параметрами
-        -- Или, если есть API, вызвать: closestChest.prompt:InputBegan({UserInputType = Enum.UserInputType.Touch})
-        -- В данном случае попробуем имитировать активирование:
-        if not closestChest.prompt.Triggered then
-            closestChest.prompt:InputBegan({UserInputType = Enum.UserInputType.Touch})
-        end
-    end
-
-    wait(1)
-end
+           
