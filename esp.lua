@@ -42,7 +42,7 @@ local function findAccessibleChest(chests)
         for _, part in pairs(chest:GetChildren()) do
             if part:IsA("BasePart") then
                 local y = part.Position.Y
-                if y >= 120 and y <= 180 then
+                if y >= 115 and y <= 180 then
                     accessible = true
                     break
                 end
@@ -65,7 +65,7 @@ local function teleportToRandomAccessibleChest()
         if part:IsA("BasePart") then
             local y = part.Position.Y
             -- Ограничение по высоте
-            if y < 120 then y = 120 end
+            if y < 115 then y = 115 end
             if y > 180 then y = 180 end
             humanoidRootPart.CFrame = CFrame.new(part.Position.X, y + 3, part.Position.Z)
             break
@@ -98,3 +98,50 @@ end
 
 startButton.MouseButton1Click:Connect(startTeleportCycle)
 stopButton.MouseButton1Click:Connect(stopTeleportCycle)
+
+-- =======================
+-- Автоматическая активация ProximityPrompt
+-- =======================
+
+local promptRadius = 15 -- радиус поиска сундука
+
+while true do
+    local chests = {}
+    for _, model in pairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name == "chests" then
+            for _, part in pairs(model:GetChildren()) do
+                if part:IsA("BasePart") then
+                    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then
+                        table.insert(chests, {part = part, prompt = prompt})
+                    end
+                end
+            end
+        end
+    end
+
+    local closestChest = nil
+    local minDistance = math.huge
+
+    for _, chest in pairs(chests) do
+        local distance = (chest.part.Position - humanoidRootPart.Position).Magnitude
+        if distance <= promptRadius and distance < minDistance then
+            minDistance = distance
+            closestChest = chest
+        end
+    end
+
+    if closestChest and closestChest.prompt then
+        -- Активируем ProximityPrompt
+        -- В Roblox для автоматической активации можно вызвать: 
+        -- closestChest.prompt:InputBegan() или установить свойство Triggered
+        -- Но самый надежный способ - вызвать :InputBegan с нужными параметрами
+        -- Или, если есть API, вызвать: closestChest.prompt:InputBegan({UserInputType = Enum.UserInputType.Touch})
+        -- В данном случае попробуем имитировать активирование:
+        if not closestChest.prompt.Triggered then
+            closestChest.prompt:InputBegan({UserInputType = Enum.UserInputType.Touch})
+        end
+    end
+
+    wait(1)
+end
